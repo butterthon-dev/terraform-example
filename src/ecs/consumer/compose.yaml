@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile 
+      args:
+        DEVELOPMENT: 1
+    environment:
+      - PORT=8000
+    volumes:
+      - .:/app
+      - /app/.venv # .vnevを空ディレクトリで上書きする
+    ports:
+      - '8001:8000'
+    tty: true

@@ -1,0 +1,19 @@
+[project]
+name = "producer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.38.41",
+    "fastapi[standard]>=0.115.13",
+    "gunicorn>=23.0.0",
+    "httpx>=0.28.1",
+    "psutil>=7.0.0",
+    "redis>=6.2.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "boto3-stubs[secretsmanager,sqs]>=1.38.41",
+]
