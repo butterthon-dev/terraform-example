@@ -1,0 +1,35 @@
+name: ecr push image
+
+on:
+  push:
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    # `permissions` を設定しないと OIDC が使えないので注意
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      # AWS認証
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: "ap-northeast-1"
+          role-to-assume: ${{ secrets.GH_OIDC_ROLE_ARN }}
+
+      # ECR認証
+      - id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # Dockerイメージを build&push する
+      - name: build and push docker image to ecr
+        working-directory: src/lambda/wms_refresh_token
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: "wms-refresh-token-viz-butterthon-dev"  # ECRリポジトリ名
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build . --tag ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
