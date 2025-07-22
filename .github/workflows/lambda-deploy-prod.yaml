@@ -6,6 +6,7 @@ on:
       - '*'
 
 env:
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-1.amazonaws.com
   ECR_WMS_REFRESH_TOKEN: wms-refresh-token-viz-butterthon-dev
   LAMBDA_PREFIX: "viz-butterthon-dev-func-func-"
 
@@ -51,7 +52,7 @@ jobs:
       - name: build and push docker image to ecr
         working-directory: src/lambda/${{ steps.extract.outputs.lambda_name }}
         env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REGISTRY: ${{ env.ECR_REGISTRY }}
           REPOSITORY: ${{ steps.extract.outputs.lambda_name }}
           IMAGE_TAG: v${{ steps.extract.outputs.version }}
         run: |
@@ -62,7 +63,7 @@ jobs:
       - name: Update lambda function
         env:
           LAMBDA_NAME: ${{ env.LAMBDA_PREFIX }}${{ steps.extract.outputs.lambda_name }}
-          IMAGE_URI: ${{ steps.login-ecr.outputs.registry }}/${{ steps.extract.outputs.lambda_name }}:v${{ steps.extract.outputs.version }}
+          IMAGE_URI: $REGISTRY/${{ steps.extract.outputs.lambda_name }}:v${{ steps.extract.outputs.version }}
         run: |
           echo "Updating Lambda function: $LAMBDA_NAME"
           aws lambda update-function-code \
