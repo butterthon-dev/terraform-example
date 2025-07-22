@@ -8,8 +8,8 @@ on:
       - src/lambda/**
 
 env:
-  ECR_REGISTRY: "184321346292.dkr.ecr.ap-northeast-1.amazonaws.com"
-  ECR_WMS_REFRESH_TOKEN: "wms-refresh-token-viz-butterthon-dev"
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-1.amazonaws.com
+  ECR_WMS_REFRESH_TOKEN: wms-refresh-token-viz-butterthon-dev
   LAMBDA_WMS_REFRESH_TOKEN: "viz-butterthon-dev-func-func-hello-world-from-image"
 
 jobs:
@@ -50,5 +50,4 @@ jobs:
         run: |
           docker build . --tag ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
           docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-
-# aws lambda update-function-code --function-name ${{ env.LAMBDA_WMS_REFRESH_TOKEN }} --image-uri ${{ env.ECR_REGISTRY }}/${{ env.ECR_WMS_REFRESH_TOKEN }}:$IMAGE_TAG
+          aws lambda update-function-code --function-name ${{ env.LAMBDA_WMS_REFRESH_TOKEN }} --image-uri ${{ env.ECR_REGISTRY }}/${{ env.ECR_WMS_REFRESH_TOKEN }}:$IMAGE_TAG
