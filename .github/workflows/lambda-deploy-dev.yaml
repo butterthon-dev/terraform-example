@@ -51,6 +51,6 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           LAMBDA_NAME: ${{ env.LAMBDA_PREFIX }}wms_refresh_token
         run: |
-          docker build . --tag $REGISTRY/REPOSITORY:$IMAGE_TAG
+          docker build . --tag $REGISTRY/$REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
           aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $REGISTRY/$REPOSITORY:$IMAGE_TAG
