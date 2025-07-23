@@ -52,7 +52,7 @@ jobs:
       - name: build and push docker image to ecr
         working-directory: src/lambda/${{ steps.extract.outputs.lambda_name }}
         env:
-          REGISTRY: ${{ env.ECR_REGISTRY }}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: ${{ env.REPOSITORY_PREFIX }}${{ steps.extract.outputs.lambda_name }}
           IMAGE_TAG: v${{ steps.extract.outputs.version }}
         run: |
@@ -62,10 +62,12 @@ jobs:
 
       - name: Update lambda function
         env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ env.REPOSITORY_PREFIX }}${{ steps.extract.outputs.lambda_name }}
+          IMAGE_TAG: v${{ steps.extract.outputs.version }}
           LAMBDA_NAME: ${{ env.LAMBDA_PREFIX }}${{ steps.extract.outputs.lambda_name }}
-          IMAGE_URI: $REGISTRY/${{ env.REPOSITORY_PREFIX }}${{ steps.extract.outputs.lambda_name }}:v${{ steps.extract.outputs.version }}
         run: |
           echo "Updating Lambda function: $LAMBDA_NAME"
           aws lambda update-function-code \
             --function-name "$LAMBDA_NAME" \
-            --image-uri "$IMAGE_URI"
+            --image-uri "$REGISTRY/$REPOSITORY:v$IMAGE_TAG"
