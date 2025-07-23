@@ -4,6 +4,7 @@ import sys
 import requests
 
 def entrypoint(event, context):
+    print('start')
     response = requests.get("https://example.com/", timeout=30)
     return {
         "statusCode": 200,
