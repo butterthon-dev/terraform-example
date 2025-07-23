@@ -70,4 +70,4 @@ jobs:
           echo "Updating Lambda function: $LAMBDA_NAME"
           aws lambda update-function-code \
             --function-name "$LAMBDA_NAME" \
-            --image-uri "$REGISTRY/$REPOSITORY:v$IMAGE_TAG"
+            --image-uri "$REGISTRY/$REPOSITORYv$IMAGE_TAG"
