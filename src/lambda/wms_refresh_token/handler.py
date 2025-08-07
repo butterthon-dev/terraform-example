@@ -4,7 +4,8 @@ import os
 import sys
 from logging import getLogger
 
-logging.basicConfig(level=logging.INFO)
+# ルートロガーのログレベルを設定する
+logging.getLogger().setLevel(logging.INFO)
 logger = getLogger(__name__)
 
 
