@@ -40,7 +40,8 @@ jobs:
         name: Check changes in wms_refresh_token
         run: |
           CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^src/lambda/wms_refresh_token/' || true)
-          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+          CHANGED_JOINED=$(echo "$CHANGED" | paste -sd ";" -)
+          echo "changed=$CHANGED_JOINED" >> $GITHUB_OUTPUT
 
       # wms_refresh_tokenのDockerイメージをbuild&push
       - name: build and push docker image to ecr

@@ -9,7 +9,7 @@ logger = getLogger(__name__)
 
 
 def entrypoint(event, context):
-    logger.info(f"ENV: {os.getenv('ENV')}")
+    logger.info(f"ENV={os.getenv('ENV', '')}")
     response = requests.get("https://example.com/", timeout=30)
     result = 1 / 0  # 0除算でエラーを発生させる
     return {
