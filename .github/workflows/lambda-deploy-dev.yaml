@@ -58,6 +58,8 @@ jobs:
             --build-arg NEW_RELIC_LAMBDA_HANDLER=handler.entrypoint \
             --build-arg NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY }} \
             --build-arg NEW_RELIC_TRUSTED_ACCOUNT_KEY=${{ secrets.NEW_RELIC_TRUSTED_ACCOUNT_KEY }} \
-            --build-arg NEW_RELIC_EXTENSION_SEND_FUNCTION_LOGS=true
+            --build-arg NEW_RELIC_EXTENSION_SEND_FUNCTION_LOGS=true \
+            --build-arg NEW_RELIC_EXTENSION_LOG_LEVEL=info
+
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
           aws lambda update-function-code --function-name $LAMBDA_NAME --image-uri $REGISTRY/$REPOSITORY:$IMAGE_TAG
