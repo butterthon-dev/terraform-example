@@ -55,7 +55,7 @@ jobs:
         run: |
           docker build . --tag $REGISTRY/$REPOSITORY:$IMAGE_TAG \
             --build-arg NEW_RELIC_ACCOUNT_ID=${{ secrets.NEW_RELIC_ACCOUNT_ID }} \
-            --build-arg NEW_RELIC_LAMBDA_HANDLER=handler.lambda_handler \
+            --build-arg NEW_RELIC_LAMBDA_HANDLER=handler.entrypoint \
             --build-arg NEW_RELIC_LICENSE_KEY=${{ secrets.NEW_RELIC_LICENSE_KEY }} \
             --build-arg NEW_RELIC_TRUSTED_ACCOUNT_KEY=${{ secrets.NEW_RELIC_TRUSTED_ACCOUNT_KEY }} \
             --build-arg NEW_RELIC_EXTENSION_SEND_FUNCTION_LOGS=true
