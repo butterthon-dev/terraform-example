@@ -79,8 +79,19 @@ resource "aws_iam_policy" "github_oidc_policy" {
           "ecr:PutImage",
           "ecr:UploadLayerPart"
         ]
-        Resource = ["*"]
+        Resource = [
+          "arn:aws:ecr:ap-northeast-1:${data.aws_caller_identity.current.account_id}:repository/viz-butterthon-dev-ecr-*"
+        ]
       },
+
+      # Lambdaの更新
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:UpdateFunctionCode"
+        ]
+        Resource = ["arn:aws:lambda:ap-northeast-1:${data.aws_caller_identity.current.account_id}:function:viz-butterthon-dev-func-*"]
+      }
     ]
   })
 }

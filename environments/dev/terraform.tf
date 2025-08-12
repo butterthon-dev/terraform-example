@@ -12,3 +12,5 @@ provider "aws" {
   region  = "ap-northeast-1"
   profile = "butterthon-dev"
 }
+
+data "aws_caller_identity" "current" {}

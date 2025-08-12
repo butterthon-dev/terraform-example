@@ -69,3 +69,24 @@ variable "rotation_rules" {
   description = "シークレットのローテーションルール"
   default     = null
 }
+
+variable "create_secret_version" {
+  type = bool
+  description = "シークレットバージョンを作成するかどうか"
+  default = false
+}
+
+variable "secret_type" {
+  type = string
+  description = "シークレットのタイプ"
+  default = "string"
+  validation {
+    condition = contains(["string", "json"], var.secret_type)
+    error_message = "secret_type must be either `string` or `json`"
+  }
+}
+
+variable "secret_string" {
+  type = any
+  default = null
+}

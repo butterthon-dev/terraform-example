@@ -29,11 +29,12 @@ module "network" {
 module "ecr" {
   source = "../../modules/ecr"
 
+  service_name = local.service_name
   for_each = { for i in [
-    { "name" = "producer-${local.service_name}" },
-    { "name" = "consumer-${local.service_name}" },
-    { "name" = "poller-${local.service_name}" },
-    { "name" = "wms-refresh-token-${local.service_name}" },
+    # { "name" = "producer" },
+    # { "name" = "consumer" },
+    # { "name" = "poller" },
+    { "name" = "wms_refresh_token" },
   ] : i.name => i }
   repository_name = each.value.name
 }
@@ -342,8 +343,8 @@ module "ecr" {
 #   env          = "dev"
 #   service_name = local.service_name
 
-#   replication_group_id       = "deliveries"
-#   # parameter_group_name       = "default.valkey7"
+#   replication_group_id       = "smpl"
+#   parameter_group_name       = "default.valkey7"
 #   # engine                     = "valkey"
 #   # engine_version             = "7.2"
 #   node_type                  = "cache.t2.micro"
@@ -407,49 +408,15 @@ module "ecr" {
 # }
 
 
-# ########################################################
-# # Lambda(Docker) × SecretsManagerのローテーション検証
-# ########################################################
-module "lambda_hello_world_from_image" {
-  source = "../../modules/lambda/image"
-  service_name = local.service_name
-  function_name = "func-hello-world-from-image"
-  # image_uri = "184321346292.dkr.ecr.ap-northeast-1.amazonaws.com/wms-refresh-token-viz-butterthon-dev:latest"
-  image_uri = "${module.ecr["wms-refresh-token-${local.service_name}"].repository_url}:latest"
-  publish = true
-
-  create_lambda_execution_role = true
-  lambda_execution_role_policy = {
-    Version = "2012-10-17"
-    Statement = [
-      # 特定のSecretsManagerの編集を許可するポリシー
-      {
-        Effect   = "Allow"
-        Action   = ["secretsmanager:*"]
-        Resource = [
-          module.secret_token.secret_arn,
-        ]
-      },
-    ]
-  }
-
-  lambda_permissions = [
-    {
-      action = "lambda:InvokeFunction"
-      function_name = module.lambda_hello_world_from_image.lambda_function_name
-      principal = "secretsmanager.amazonaws.com"
-      source_arn = module.secret_token.secret_arn
-    }
-  ]
-}
-
-# ########################################################
-# # Lambda(Zip) × SecretsManagerのローテーション検証
-# ########################################################
-
-# module "lambda_hello_world_from_zip" {
-#   source = "../../modules/lambda/zip"
+# # ########################################################
+# # # Lambda(Docker) × SecretsManagerのローテーション検証
+# # ########################################################
+# module "lambda_hello_world_from_image" {
+#   source = "../../modules/lambda/image"
 #   service_name = local.service_name
+#   function_name = "wms_refresh_token"
+#   image_uri = "${module.ecr["wms_refresh_token"].repository_url}:latest"
+#   publish = true
 
 #   create_lambda_execution_role = true
 #   lambda_execution_role_policy = {
@@ -469,11 +436,45 @@ module "lambda_hello_world_from_image" {
 #   lambda_permissions = [
 #     {
 #       action = "lambda:InvokeFunction"
-#       function_name = module.lambda_hello_world_from_zip.lambda_function_name
+#       function_name = module.lambda_hello_world_from_image.lambda_function_name
 #       principal = "secretsmanager.amazonaws.com"
 #       source_arn = module.secret_token.secret_arn
 #     }
 #   ]
+# }
+
+
+# ########################################################
+# # Lambda(Zip) × SecretsManagerのローテーション検証
+# ########################################################
+
+# module "wms_refresh_token" {
+#   source = "../../modules/lambda/zip"
+#   service_name = local.service_name
+
+#   # create_lambda_execution_role = true
+#   # lambda_execution_role_policy = {
+#   #   Version = "2012-10-17"
+#   #   Statement = [
+#   #     # 特定のSecretsManagerの編集を許可するポリシー
+#   #     {
+#   #       Effect   = "Allow"
+#   #       Action   = ["secretsmanager:*"]
+#   #       Resource = [
+#   #         module.secret_token.secret_arn,
+#   #       ]
+#   #     },
+#   #   ]
+#   # }
+
+#   # lambda_permissions = [
+#   #   {
+#   #     action = "lambda:InvokeFunction"
+#   #     function_name = module.lambda_hello_world_from_zip.lambda_function_name
+#   #     principal = "secretsmanager.amazonaws.com"
+#   #     source_arn = module.secret_token.secret_arn
+#   #   }
+#   # ]
 
 #   source_dir = "../../src/lambda/wms_refresh_token"
 #   output_path = "../../src/lambda/wms_refresh_token/lambda_function.zip"
@@ -482,26 +483,73 @@ module "lambda_hello_world_from_image" {
 #   runtime = "python3.13"
 #   handler = "handler.entrypoint"
 #   publish = true
+
+#   environment_variables = {
+#     NEW_RELIC_ACCOUNT_ID = ""
+#     NEW_RELIC_LAMBDA_HANDLER = "handler.entrypoint"
+#     NEW_RELIC_LICENSE_KEY = ""
+#     NEW_RELIC_TRUSTED_ACCOUNT_KEY = ""
+#   }
 # }
 
-# SecretsManager
-module "secret_token" {
+# # SecretsManager
+# module "secret_token" {
+#   source = "../../modules/secretsmanager"
+
+#   name        = "wms/logiless"
+#   enabled_rotation = true
+#   rotation_lambda_arn = module.lambda_hello_world_from_image.lambda_function_arn
+#   rotation_rules = {
+#     automatically_after_days = 1
+#     # duration = "1h"
+#     # schedule_expression = "cron(*/10 * * * *)"
+#   }
+# }
+
+# module "wms_secret_key" {
+#   source      = "../../modules/ssm/parameter"
+#   name        = "/wms/django/secret_key"
+#   description = "Djangoのシークレットキー"
+#   type        = "SecureString"
+#   value       = "dummy"
+# }
+
+
+########################################################
+# Lambda(Zip) の NewRelic統合の検証
+########################################################
+
+module "wms_refresh_token_env" {
   source = "../../modules/secretsmanager"
 
-  name        = "wms/logiless"
-  enabled_rotation = true
-  rotation_lambda_arn = module.lambda_hello_world_from_image.lambda_function_arn
-  rotation_rules = {
-    automatically_after_days = 1
-    # duration = "1h"
-    # schedule_expression = "cron(*/10 * * * *)"
+  name        = "lambda/wms_refresh_token/env"
+
+  create_secret_version = true
+  secret_type = "json"
+  secret_string = {
+    NEW_RELIC_ACCOUNT_ID = "dummy"
+    NEW_RELIC_LAMBDA_HANDLER = "handler.entrypoint"
+    NEW_RELIC_LICENSE_KEY = "dummy"
+    NEW_RELIC_TRUSTED_ACCOUNT_KEY = "dummy"
   }
 }
 
-module "wms_secret_key" {
-  source      = "../../modules/ssm/parameter"
-  name        = "/wms/django/secret_key"
-  description = "Djangoのシークレットキー"
-  type        = "SecureString"
-  value       = "dummy"
+data aws_secretsmanager_secret_version "wms_refresh_token_env" {
+  secret_id = module.wms_refresh_token_env.secret_id
+}
+
+data "external" "wms_refresh_token_env" {
+  program = ["echo", "${data.aws_secretsmanager_secret_version.wms_refresh_token_env.secret_string}"]
+}
+
+module "wms_refresh_token" {
+  source = "../../modules/lambda/image"
+  service_name = local.service_name
+  function_name = "wms_refresh_token"
+  image_uri = "${module.ecr["wms_refresh_token"].repository_url}:latest"
+  publish = true
+
+  environment_variables = {
+    ENV = "dev"
+  }
 }

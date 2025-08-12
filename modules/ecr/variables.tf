@@ -1,3 +1,8 @@
+variable "service_name" {
+  description = "サービス名"
+  type        = string
+}
+
 variable "repository_name" {
   description = "リポジトリ名"
   type        = string

@@ -1,4 +1,14 @@
 ################################################################################
+# Lambda関数のCloudWatchロググループ
+################################################################################
+resource "aws_cloudwatch_log_group" "main" {
+  name              = "/aws/lambda/${var.service_name}-func-${var.function_name}"
+  log_group_class   = var.log_group_class
+  retention_in_days = var.retention_in_days
+}
+
+
+################################################################################
 # Lambda関数の実行ロール
 ################################################################################
 resource "aws_iam_role" "main" {
@@ -43,6 +53,40 @@ resource "aws_iam_role_policy_attachment" "main" {
   policy_arn = aws_iam_policy.main[0].arn
 }
 
+resource "aws_iam_policy" "cloudwatch_logs" {
+  count = var.create_lambda_execution_role ? 1 : 0
+
+  name = "${var.service_name}-policy-${var.function_name}-cloudwatch-logs"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          aws_cloudwatch_log_group.main.arn,
+          "${aws_cloudwatch_log_group.main.arn}:*"
+        ]
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${var.service_name}-policy-${var.function_name}-cloudwatch-logs"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_logs" {
+  count = var.create_lambda_execution_role != null ? 1 : 0
+
+  role       = aws_iam_role.main[0].name
+  policy_arn = aws_iam_policy.cloudwatch_logs[0].arn
+}
+
 
 ################################################################################
 # Lambda関数
@@ -57,6 +101,10 @@ resource "aws_lambda_function" "main" {
   timeout          = var.timeout
   image_uri        = var.image_uri
 
+  environment {
+    variables = var.environment_variables
+  }
+
   dynamic "vpc_config" {
     for_each = var.vpc_config != null ? [var.vpc_config] : []
     content {
@@ -64,6 +112,10 @@ resource "aws_lambda_function" "main" {
       security_group_ids          = vpc_config.value.security_group_ids
       ipv6_allowed_for_dual_stack = vpc_config.value.ipv6_allowed_for_dual_stack
     }
+  }
+
+  lifecycle {
+    ignore_changes = [ image_uri ]
   }
 }
 

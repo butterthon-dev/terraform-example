@@ -2,11 +2,9 @@ import json
 import logging
 import os
 import sys
-from logging import getLogger
 
-# ルートロガーのログレベルを設定する
-logging.getLogger().setLevel(logging.INFO)
-logger = getLogger(__name__)
+logger = logging.getLogger()  # ルートロガーのログレベルを設定しないとCloudWatchにログが記録されない
+logger.setLevel("INFO")
 
 
 def entrypoint(event, context):
