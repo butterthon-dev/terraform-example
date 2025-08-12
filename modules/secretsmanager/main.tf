@@ -38,3 +38,10 @@ resource "aws_secretsmanager_secret_rotation" "main" {
     }
   }
 }
+
+resource "aws_secretsmanager_secret_version" "main" {
+  count = var.create_secret_version ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.main.id
+  secret_string = var.secret_type == "json" ? jsonencode(var.secret_string) : tostring(var.secret_string)
+}

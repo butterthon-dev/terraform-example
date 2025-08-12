@@ -74,6 +74,12 @@ variable "image_uri" {
   description = "Lambda関数のイメージURI"
 }
 
+variable "environment_variables" {
+  type        = map(string)
+  description = "Lambda関数の環境変数"
+  default     = {}
+}
+
 variable "vpc_config" {
   type = object({
     subnet_ids                  = list(string)
@@ -101,4 +107,16 @@ variable "lambda_permissions" {
   )
   description = "Lambdaパーミッション"
   default     = []
+}
+
+variable "log_group_class" {
+  type        = string
+  description = "ロググループのログクラス。指定可能な値はSTANDARD, INFREQUENT_ACCESS, DELIVERY。"
+  default     = "STANDARD"
+}
+
+variable "retention_in_days" {
+  type        = number
+  description = "CloudWatchログの保持期間（日）。指定可能な値は0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653。0を選択した場合、ロググループ内のイベントは常に保持され期限切れにならない。log_group_classがDELIVERYに設定されている場合、この引数は無視され、retention_in_daysは強制的に2に設定される。"
+  default     = 30
 }
