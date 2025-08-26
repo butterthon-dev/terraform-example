@@ -64,8 +64,8 @@ resource "aws_iam_policy" "github_oidc_policy" {
     Statement = [
       # ECRの認証
       {
-        Effect = "Allow"
-        Action = ["ecr:GetAuthorizationToken"]
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
         Resource = ["*"]
       },
 
@@ -97,6 +97,6 @@ resource "aws_iam_policy" "github_oidc_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "github_oidc_policy" {
-  role      = aws_iam_role.github_oidc.name
+  role       = aws_iam_role.github_oidc.name
   policy_arn = aws_iam_policy.github_oidc_policy.arn
 }
