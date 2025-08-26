@@ -1,5 +1,5 @@
 locals {
-  common_name = "${var.env}-${var.service_name}"
+  common_name = var.service_name
 
   container_definitions_with_logging = [
     for container_definition in var.container_definitions : merge(
@@ -47,19 +47,39 @@ resource "aws_iam_role" "task_execution_role" {
 resource "aws_iam_policy" "task_execution_role" {
   count = var.create_task_execution_role ? 1 : 0
 
-  name = "${local.common_name}-policy-${var.ecs_service_name}-task-exec"
+  name   = "${local.common_name}-policy-${var.ecs_service_name}-task-exec"
   policy = jsonencode(var.task_execution_role_policy)
+  # policy = jsonencode(merge(
+  #   var.task_execution_role_policy,
+  #   {
+  #     Statement = concat(
+  #       var.task_execution_role_policy.Statement,
+  #       [{
+  #         Effect = "Allow"
+  #         Action = [
+  #           "kms:Encrypt",
+  #           "kms:Decrypt",
+  #           "kms:GenerateDataKey*",
+  #           "kms:DescribeKey",
+  #         ]
+  #         Resource = [aws_kms_key.main.arn]
+  #       }]
+  #     )
+  #   }
+  # ))
 
   tags = merge(
     var.task_execution_role_policy_tags,
     { Name = "${local.common_name}-policy-${var.ecs_service_name}-task-exec" }
   )
+
+  # depends_on = [ aws_kms_key.main ]
 }
 
 resource "aws_iam_role_policy_attachment" "task_execution_role" {
   count = var.create_task_execution_role ? 1 : 0
 
-  role      = aws_iam_role.task_execution_role[0].name
+  role       = aws_iam_role.task_execution_role[0].name
   policy_arn = aws_iam_policy.task_execution_role[0].arn
 }
 
@@ -93,7 +113,7 @@ resource "aws_iam_role" "task_role" {
 resource "aws_iam_policy" "task_role" {
   count = var.create_task_role && var.task_role_policy != null ? 1 : 0
 
-  name = "${local.common_name}-policy-${var.ecs_service_name}-task"
+  name   = "${local.common_name}-policy-${var.ecs_service_name}-task"
   policy = jsonencode(var.task_role_policy)
 
   tags = merge(
@@ -105,7 +125,7 @@ resource "aws_iam_policy" "task_role" {
 resource "aws_iam_role_policy_attachment" "task_role" {
   count = var.create_task_role && var.task_role_policy != null ? 1 : 0
 
-  role = aws_iam_role.task_role[0].name
+  role       = aws_iam_role.task_role[0].name
   policy_arn = aws_iam_policy.task_role[0].arn
 }
 
@@ -123,10 +143,10 @@ resource "aws_security_group" "main" {
     for_each = var.egress_rules
     content {
       security_groups = try(egress.value.security_group_ids, null)
-      cidr_blocks = try(egress.value.cidr_blocks, null)
-      from_port   = egress.value.from_port
-      to_port     = egress.value.to_port
-      protocol    = egress.value.protocol
+      cidr_blocks     = try(egress.value.cidr_blocks, null)
+      from_port       = egress.value.from_port
+      to_port         = egress.value.to_port
+      protocol        = egress.value.protocol
     }
   }
 
@@ -134,10 +154,10 @@ resource "aws_security_group" "main" {
     for_each = var.ingress_rules
     content {
       security_groups = try(ingress.value.security_group_ids, null)
-      cidr_blocks = try(ingress.value.cidr_blocks, null)
-      from_port   = ingress.value.from_port
-      to_port     = ingress.value.to_port
-      protocol    = ingress.value.protocol
+      cidr_blocks     = try(ingress.value.cidr_blocks, null)
+      from_port       = ingress.value.from_port
+      to_port         = ingress.value.to_port
+      protocol        = ingress.value.protocol
     }
   }
 
@@ -152,10 +172,21 @@ resource "aws_security_group" "main" {
 # ECS
 ################################################################################
 
-# CloudWatchロググループ
+# # CloudWatchロググループ
+# resource "aws_kms_key" "main" {
+#   description             = "KMS key for ECS Service log encryption"
+#   deletion_window_in_days = 7
+#   enable_key_rotation     = true
+
+#   tags = {
+#     Name = "${local.common_name}-${var.ecs_service_name}"
+#   }
+# }
+
 resource "aws_cloudwatch_log_group" "main" {
-  name = "/aws/ecs/${var.ecs_cluster_name}/${var.ecs_service_name}"
-  tags = var.cloudwatch_log_group_tags
+  name       = "/aws/ecs/${var.ecs_cluster_name}/${var.ecs_service_name}"
+  # kms_key_id = aws_kms_key.main.arn
+  tags       = var.cloudwatch_log_group_tags
 }
 
 # Service Discovery
@@ -180,10 +211,10 @@ resource "aws_service_discovery_service" "main" {
   }
 }
 
-# ECSクラスター
-data "aws_ecs_cluster" "main" {
-  cluster_name = var.ecs_cluster_name
-}
+# # ECSクラスター
+# data "aws_ecs_cluster" "main" {
+#   cluster_name = var.ecs_cluster_name
+# }
 
 # ECSタスク定義
 resource "aws_ecs_task_definition" "main" {
@@ -204,8 +235,8 @@ resource "aws_ecs_task_definition" "main" {
 
 # ECSサービス
 resource "aws_ecs_service" "main" {
-  name                               = var.ecs_service_name
-  cluster                            = data.aws_ecs_cluster.main.id
+  name                               = "${local.common_name}-${var.ecs_service_name}"
+  cluster                            = var.ecs_cluster_id
   task_definition                    = aws_ecs_task_definition.main.arn
   desired_count                      = var.desired_count
   launch_type                        = "FARGATE"
@@ -213,6 +244,7 @@ resource "aws_ecs_service" "main" {
   scheduling_strategy                = var.scheduling_strategy
   deployment_minimum_healthy_percent = var.deployment_minimum_healthy_percent
   deployment_maximum_percent         = var.deployment_maximum_percent
+  enable_execute_command             = var.enable_execute_command
 
   dynamic "service_registries" {
     for_each = var.enabled_service_discovery ? [aws_service_discovery_service.main[0]] : []
@@ -246,8 +278,11 @@ resource "aws_ecs_service" "main" {
   dynamic "network_configuration" {
     for_each = var.network_configuration != null ? [var.network_configuration] : []
     content {
-      subnets          = network_configuration.value.subnet_ids
-      security_groups  = [aws_security_group.main.id]
+      subnets = network_configuration.value.subnet_ids
+      security_groups = concat(
+        [aws_security_group.main.id],
+        var.additional_security_group_ids
+      )
       assign_public_ip = network_configuration.value.assign_public_ip
     }
   }
@@ -282,6 +317,6 @@ resource "aws_ecs_service" "main" {
 
   tags = merge(
     var.ecs_service_tags,
-    { Name = var.ecs_service_name }
+    { Name = "${local.common_name}-${var.ecs_service_name}" }
   )
 }

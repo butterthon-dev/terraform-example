@@ -3,11 +3,6 @@ variable "service_name" {
   type        = string
 }
 
-variable "env" {
-  description = "環境（例: 'dev', 'prod'）"
-  type        = string
-}
-
 variable "region" {
   description = "リージョン"
   type        = string
@@ -150,13 +145,13 @@ variable "sg_description" {
 
 variable "egress_rules" {
   type = list(object({
-    description     = optional(string)
+    description        = optional(string)
     security_group_ids = optional(list(string))
-    from_port       = number
-    to_port         = number
-    protocol        = string
-    cidr_blocks     = optional(list(string))
-    security_groups = optional(list(string))
+    from_port          = number
+    to_port            = number
+    protocol           = string
+    cidr_blocks        = optional(list(string))
+    security_groups    = optional(list(string))
   }))
   description = "アウトバウンドルール"
   default = [{
@@ -170,13 +165,13 @@ variable "egress_rules" {
 
 variable "ingress_rules" {
   type = list(object({
-    description     = optional(string)
+    description        = optional(string)
     security_group_ids = optional(list(string))
-    from_port       = number
-    to_port         = number
-    protocol        = string
-    cidr_blocks     = optional(list(string))
-    security_groups = optional(list(string))
+    from_port          = number
+    to_port            = number
+    protocol           = string
+    cidr_blocks        = optional(list(string))
+    security_groups    = optional(list(string))
   }))
   description = "インバウンドルール"
   default     = []
@@ -191,6 +186,12 @@ variable "security_group_tags" {
   type        = map(string)
   description = "セキュリティグループのタグ"
   default     = {}
+}
+
+variable "additional_security_group_ids" {
+  type        = list(string)
+  description = "ECSサービスに追加でアタッチするセキュリティグループID"
+  default     = []
 }
 
 
@@ -261,8 +262,9 @@ variable "task_memory" {
 
 variable "container_definitions" {
   type = list(object({
-    name  = string
-    image = string
+    name    = string
+    image   = string
+    command = optional(list(string))
     portMappings = optional(list(object({
       name          = string
       containerPort = number
@@ -289,6 +291,10 @@ variable "ecs_task_definition_tags" {
 ################################################################################
 # ECSサービス
 ################################################################################
+variable "ecs_cluster_id" {
+  type        = string
+  description = "ECSクラスターID"
+}
 
 variable "ecs_service_name" {
   type        = string
@@ -388,4 +394,10 @@ variable "ecs_service_tags" {
   type        = map(string)
   description = "ECSサービスのタグ"
   default     = {}
+}
+
+variable "enable_execute_command" {
+  type        = bool
+  description = "ECS Execを有効にするかどうか。デフォルトは無効(false)"
+  default     = false
 }
