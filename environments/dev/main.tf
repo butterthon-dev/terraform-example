@@ -19,11 +19,11 @@ module "network" {
   one_nat_gateway_per_az = false
 }
 
-# # ECS名前空間
-# resource "aws_service_discovery_http_namespace" "main" {
-#   name        = "butterthon_dev"
-#   description = ""
-# }
+# ECS名前空間
+resource "aws_service_discovery_http_namespace" "main" {
+  name        = "butterthon_dev"
+  description = ""
+}
 
 # ECR
 module "ecr" {
@@ -31,7 +31,7 @@ module "ecr" {
 
   service_name = local.service_name
   for_each = { for i in [
-    # { "name" = "producer" },
+    { "name" = "producer" },
     # { "name" = "consumer" },
     # { "name" = "poller" },
     { "name" = "wms_refresh_token" },
@@ -54,180 +54,181 @@ module "ecr" {
 #   name        = "env/wms/logiless"
 # }
 
-# # ALB - プロデューササービス
-# module "alb_producer" {
-#   source = "../../modules/alb"
+# ALB - プロデューササービス
+module "alb_producer" {
+  source = "../../modules/alb"
 
-#   service_name = local.service_name
-#   name         = "alb"
-#   vpc_id       = module.network.vpc_id
-#   subnet_ids   = module.network.public_subnets
-#   ingress_rules = [
-#     {
-#       from_port   = 80
-#       to_port     = 80
-#       protocol    = "tcp"
-#       cidr_blocks = ["0.0.0.0/0"]
-#     }
-#   ]
+  service_name = local.service_name
+  name         = "producer"
+  vpc_id       = module.network.vpc_id
+  subnet_ids   = module.network.public_subnets
+  egress_rules = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+  ingress_rules = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = -1
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
 
-#   target_group_port     = 8000
-#   target_group_protocol = "HTTP"
+  listener_port     = 443
+  listener_protocol = "HTTPS"
 
-#   listener_port     = 80
-#   listener_protocol = "HTTP"
+  target_group_port     = 8000
+  target_group_protocol = "HTTP"
 
-#   health_check = {
-#     enabled  = true
-#     path     = "/healthz"
-#     port     = "traffic-port"
-#     protocol = "HTTP"
-#   }
+  health_check = {
+    enabled             = true
+    healthy_threshold   = 5
+    interval            = 30
+    matcher             = 200
+    path                = "/healthz"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
 
-#   # target_group_listeners = {
-#   #   ex-http = {
-#   #     port     = 80
-#   #     protocol = "HTTP"
-#   #     forward = {
-#   #       target_group_key = "ex-ecs"
-#   #     }
-#   #   }
-#   #   # ex-https = {
-#   #   #   port            = 443
-#   #   #   protocol        = "HTTPS"
-#   #   #   certificate_arn = "arn:aws:iam::123456789012:server-certificate/test_cert-123456789012"
+  ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn = aws_acm_certificate.main.arn
+  zone_id         = data.aws_route53_zone.root.zone_id
+  domain_name     = data.aws_route53_zone.root.name
 
-#   #   #   forward = {
-#   #   #     target_group_key = "ex-instance"
-#   #   #   }
-#   #   # }
-#   # }
-# }
+  enable_deletion_protection = false
+}
 
-# # Service Discovery 名前空間
-# resource "aws_service_discovery_private_dns_namespace" "internal" {
-#   name        = "butterthon-dev.internal"
-#   description = "Service discovery for internal API"
-#   vpc         = module.network.vpc_id
-# }
+# Service Discovery 名前空間
+resource "aws_service_discovery_private_dns_namespace" "internal" {
+  name        = "butterthon-dev.internal"
+  description = "Service discovery for internal API"
+  vpc         = module.network.vpc_id
+}
 
-# # ECSクラスタ
-# module "ecs_cluster" {
-#   source = "../../modules/ecs-cluster"
-#   name   = "ecs-${local.service_name}"
+# ECSクラスタ
+module "ecs_cluster" {
+  source = "../../modules/ecs-cluster"
+  name   = "ecs-${local.service_name}"
 
-#   # settings = [
-#   #   {
-#   #     name  = "containerInsights"
-#   #     value = "enabled"
-#   #   }
-#   # ]
+  # settings = [
+  #   {
+  #     name  = "containerInsights"
+  #     value = "enabled"
+  #   }
+  # ]
 
-#   configuration = {
-#     execute_command_configuration = {
-#       logging = "OVERRIDE"
-#       log_configuration = {
-#         cloud_watch_encryption_enabled = true
-#         cloud_watch_log_group_name     = "ecs-${local.service_name}"
-#       }
-#     }
-#   }
+  configuration = {
+    execute_command_configuration = {
+      # logging = "NONE"
+      logging = "DEFAULT"
+      # log_configuration = {
+      #   cloud_watch_encryption_enabled = true
+      #   cloud_watch_log_group_name     = "ecs-${local.service_name}"
+      # }
+    }
+  }
 
-#   service_connect_defaults = {
-#     namespace = aws_service_discovery_http_namespace.main.arn
-#   }
+  service_connect_defaults = {
+    namespace = aws_service_discovery_http_namespace.main.arn
+  }
 
-#   default_capacity_provider_strategy = {
-#     base              = 1
-#     weight            = 100
-#     capacity_provider = "FARGATE_SPOT"
-#   }
-# }
+  default_capacity_provider_strategy = {
+    base              = 1
+    weight            = 100
+    capacity_provider = "FARGATE_SPOT"
+  }
+}
 
-# # ECSサービス
-# module "ecs_service_producer" {
-#   source = "../../modules/ecs-service/fargate"
+# ECSサービス
+module "ecs_service_producer" {
+  source = "../../modules/ecs-service/fargate"
 
-#   env          = "dev"
-#   service_name = local.service_name
+  service_name = local.service_name
 
-#   # タスクロール
-#   task_role_policy = {
-#     Version = "2012-10-17"
-#     Statement = [
-#       # 特定のSQSキューからのメッセージ取り出しおよびメッセージ削除を許可するポリシー
-#       {
-#         Effect = "Allow"
-#         # Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage"]
-#         Action = ["sqs:SendMessage"]
-#         Resource = [module.sqs.queue_arn]
-#       },
+  egress_rules = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
 
-#       # 特定のSecretsManagerの読み書きを許可するポリシー
-#       {
-#         Effect = "Allow"
-#         Action = ["secretsmanager:*"]
-#         Resource = [module.secret_token.secret_arn]
-#       }
-#     ]
-#   }
+  ingress_rules = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
 
-#   # セキュリティグループ
-#   vpc_id = module.network.vpc_id
-#   ingress_rules = [
-#     {
-#       from_port   = 8000
-#       to_port     = 8000
-#       protocol    = "tcp"
-#       cidr_blocks = ["0.0.0.0/0"]
-#     }
-#   ]
+  # タスクロール
+  create_task_role = true
+  task_role_policy = {
+    Version = "2012-10-17"
+    Statement = [
+      # SSMセッションマネージャ
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = ["arn:aws:ssmmessages:ap-northeast-1:184321346292:*"]
+      },
+    ]
+  }
 
-#   # ECSタスク定義
-#   task_cpu    = 256
-#   task_memory = 512
-#   container_definitions = [
-#     {
-#       name  = "api"
-#       image = "184321346292.dkr.ecr.ap-northeast-1.amazonaws.com/producer-viz-butterthon-dev:latest"
-#       portMappings = [
-#         {
-#           name          = "api"
-#           containerPort = 8000
-#           protocol      = "tcp"
-#         }
-#       ]
-#       environment = [
-#         { name = "PORT", value = "8000" },
-#         # { name = "SQS_QUEUE_URL", value = module.sqs.queue_url },
-#         # { name = "REDIS_HOST", value = module.elasticache.primary_endpoint },
-#         # { name = "REDIS_PORT", value = module.elasticache.port }
-#       ]
-#       essential              = true
-#       readonlyRootFilesystem = false
-#     }
-#   ]
+  # ECSタスク定義
+  task_cpu    = 256
+  task_memory = 512
+  container_definitions = [
+    {
+      name                   = "api"
+      image                  = "184321346292.dkr.ecr.ap-northeast-1.amazonaws.com/viz-butterthon-dev-ecr-producer:latest"
+      essential              = true
+      readonlyRootFilesystem = false
+      portMappings = [
+        {
+          name          = "api"
+          containerPort = 8000
+          protocol      = "tcp"
+        }
+      ]
+    }
+  ]
 
-#   # ECSサービス
-#   ecs_cluster_name = module.ecs_cluster.cluster_name
-#   ecs_service_name = "producer"
-#   desired_count    = 1
+  # ECSサービス
+  vpc_id                         = module.network.vpc_id
+  ecs_cluster_id                 = module.ecs_cluster.cluster_id
+  ecs_cluster_name               = module.ecs_cluster.cluster_name
+  ecs_service_name               = "producer"
+  desired_count                  = 1
+  enabled_service_discovery      = true
+  service_discovery_name         = "producer"
+  service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.internal.id
+  enable_execute_command         = true
+  network_configuration = {
+    subnet_ids       = module.network.private_subnets
+    assign_public_ip = false
+  }
 
-#   enabled_service_discovery      = true
-#   service_discovery_name         = "producer"
-#   service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.internal.id
-
-#   network_configuration = {
-#     subnet_ids       = module.network.private_subnets
-#     assign_public_ip = false
-#   }
-
-#   load_balancer = {
-#     container_name   = "api"
-#     container_port   = 8000
-#     target_group_arn = module.alb_producer.target_group_arn
-#   }
-# }
+  load_balancer = {
+    container_name   = "api"
+    container_port   = 8000
+    target_group_arn = module.alb_producer.target_group_arn
+  }
+}
 
 # module "ecs_service_poller" {
 #   source = "../../modules/ecs-service"
@@ -522,19 +523,19 @@ module "ecr" {
 module "wms_refresh_token_env" {
   source = "../../modules/secretsmanager"
 
-  name        = "lambda/wms_refresh_token/env"
+  name = "lambda/wms_refresh_token/env"
 
   create_secret_version = true
-  secret_type = "json"
+  secret_type           = "json"
   secret_string = {
-    NEW_RELIC_ACCOUNT_ID = "dummy"
-    NEW_RELIC_LAMBDA_HANDLER = "handler.entrypoint"
-    NEW_RELIC_LICENSE_KEY = "dummy"
+    NEW_RELIC_ACCOUNT_ID          = "dummy"
+    NEW_RELIC_LAMBDA_HANDLER      = "handler.entrypoint"
+    NEW_RELIC_LICENSE_KEY         = "dummy"
     NEW_RELIC_TRUSTED_ACCOUNT_KEY = "dummy"
   }
 }
 
-data aws_secretsmanager_secret_version "wms_refresh_token_env" {
+data "aws_secretsmanager_secret_version" "wms_refresh_token_env" {
   secret_id = module.wms_refresh_token_env.secret_id
 }
 
@@ -543,13 +544,195 @@ data "external" "wms_refresh_token_env" {
 }
 
 module "wms_refresh_token" {
-  source = "../../modules/lambda/image"
-  service_name = local.service_name
+  source        = "../../modules/lambda/image"
+  service_name  = local.service_name
   function_name = "wms_refresh_token"
-  image_uri = "${module.ecr["wms_refresh_token"].repository_url}:latest"
-  publish = true
+  image_uri     = "${module.ecr["wms_refresh_token"].repository_url}:latest"
+  publish       = true
 
   environment_variables = {
     ENV = "dev"
   }
+}
+
+
+########################################################
+# Cognitoユーザプールの検証
+########################################################
+module "cognito" {
+  source = "../../modules/cognito"
+
+  service_name        = local.service_name
+  name                = "cognito"
+  deletion_protection = "INACTIVE"
+  auto_verified_attributes = ["email"]
+  managed_login_version = 2  # マネージドログイン
+
+  user_pool_schema = [
+    {
+      name                     = "email"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = true
+      string_attribute_constraints = {
+        min_length = "0"
+        max_length = "2048"
+      }
+    },
+    {
+      name                     = "family_name"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = true
+      string_attribute_constraints = {
+        min_length = "0"
+        max_length = "2048"
+      }
+    },
+    {
+      name                     = "given_name"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = true
+      string_attribute_constraints = {
+        min_length = "0"
+        max_length = "2048"
+      }
+    },
+    {
+      name                     = "family_name_kana"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = false
+      string_attribute_constraints = {
+        min_length = "0"
+        max_length = "255"
+      }
+    },
+    {
+      name                     = "given_name_kana"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = false
+      string_attribute_constraints = {
+        min_length = "0"
+        max_length = "255"
+      }
+    },
+    {
+      name                     = "mail_magazine_flag"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = false
+      string_attribute_constraints = {
+        min_length = "1"
+        max_length = "10"
+      }
+    },
+    {
+      name                     = "shop_id"
+      attribute_data_type      = "String"
+      developer_only_attribute = false
+      mutable                  = true
+      required                 = false
+      string_attribute_constraints = {
+        min_length = "0"
+        max_length = "50"
+      }
+    },
+  ]
+
+  password_policy = {
+    minimum_length                   = 8
+    require_lowercase                = true
+    require_numbers                  = true
+    require_symbols                  = true
+    require_uppercase                = true
+    temporary_password_validity_days = 7
+    password_history_size            = 0
+  }
+
+  email_configuration = [
+    {
+      email_sending_account = "COGNITO_DEFAULT"
+    }
+  ]
+
+  admin_create_user_config = {
+    allow_admin_create_user_only = false
+  }
+
+  verification_message_template = {
+    default_email_option = "CONFIRM_WITH_CODE"
+  }
+
+  read_attributes = [
+    "address",
+    "birthdate",
+    "custom:family_name_kana",
+    "custom:given_name_kana",
+    "custom:mail_magazine_flag",
+    "custom:shop_id",
+    "email",
+    "email_verified",
+    "family_name",
+    "gender",
+    "given_name",
+    "locale",
+    "middle_name",
+    "name",
+    "nickname",
+    "phone_number",
+    "phone_number_verified",
+    "picture",
+    "preferred_username",
+    "profile",
+    "updated_at",
+    "website",
+    "zoneinfo",
+  ]
+
+  write_attributes = [
+    "address",
+    "birthdate",
+    "custom:family_name_kana",
+    "custom:given_name_kana",
+    "custom:mail_magazine_flag",
+    "custom:shop_id",
+    "email",
+    "family_name",
+    "gender",
+    "given_name",
+    "locale",
+    "middle_name",
+    "name",
+    "nickname",
+    "phone_number",
+    "picture",
+    "preferred_username",
+    "profile",
+    "updated_at",
+    "website",
+    "zoneinfo",
+  ]
+
+  explicit_auth_flows = [
+    "ALLOW_USER_AUTH",
+    "ALLOW_USER_SRP_AUTH",
+    "ALLOW_ADMIN_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+  ]
+
+  prevent_user_existence_errors = "ENABLED"
+  generate_secret                       = true
+  cognito_domain_name                   = "auth.${data.aws_route53_zone.root.name}"
+  cognito_custom_domain_certificate_arn = aws_acm_certificate.us_east_1.arn
+  zone_id                               = data.aws_route53_zone.root.zone_id
+  username_configuration_case_sensitive = false
 }

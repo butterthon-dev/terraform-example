@@ -178,3 +178,18 @@ variable "certificate_arn" {
   description = "証明書のARN"
   default = null
 }
+
+################################################################################
+# Route53
+################################################################################
+variable "zone_id" {
+  type        = string
+  description = "Route53のゾーンID"
+  default     = null
+}
+
+variable "domain_name" {
+  type        = string
+  description = "ドメイン名"
+  default     = null
+}

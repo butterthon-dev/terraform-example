@@ -3,7 +3,7 @@ import os
 import psutil
 
 
-bind = f"0.0.0.0:{os.environ['PORT']}"
+bind = f"0.0.0.0:8000"
 
 worker_class = "uvicorn.workers.UvicornWorker"
 workers = psutil.cpu_count(logical=True) * 2 + 1
