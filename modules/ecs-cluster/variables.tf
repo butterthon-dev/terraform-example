@@ -16,10 +16,11 @@ variable "configuration" {
   type = object({
     execute_command_configuration = object({
       logging = string
-      log_configuration = object({
+      log_configuration = optional(object({
         cloud_watch_encryption_enabled = bool
         cloud_watch_log_group_name     = string
-      })
+        s3_bucket_encryption_enabled   = optional(bool)
+      }))
     })
   })
   description = "ECSクラスターの実行コマンド設定"

@@ -22,6 +22,7 @@ resource "aws_ecs_cluster" "main" {
             content {
               cloud_watch_encryption_enabled = log_configuration.value.cloud_watch_encryption_enabled
               cloud_watch_log_group_name = log_configuration.value.cloud_watch_log_group_name
+              s3_bucket_encryption_enabled = log_configuration.value.s3_bucket_encryption_enabled
             }
           }
         }
