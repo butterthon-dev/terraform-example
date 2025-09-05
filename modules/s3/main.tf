@@ -27,6 +27,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
       id     = try(rule.value.id, null)
       status = try(rule.value.enabled ? "Enabled" : "Disabled", tobool(rule.value.status) ? "Enabled" : "Disabled", title(lower(rule.value.status)))
 
+      dynamic "noncurrent_version_expiration" {
+        for_each = try(flatten([rule.value.noncurrent_version_expiration]), [])
+
+        content {
+          newer_noncurrent_versions = try(noncurrent_version_expiration.value.newer_noncurrent_versions, null)
+          noncurrent_days           = try(noncurrent_version_expiration.value.noncurrent_days, null)
+        }
+      }
+
+      dynamic "abort_incomplete_multipart_upload" {
+        for_each = try(flatten([rule.value.abort_incomplete_multipart_upload]), [])
+
+        content {
+          days_after_initiation = try(abort_incomplete_multipart_upload.value.days_after_initiation, null)
+        }
+      }
+
       # Max 1 block - expiration
       dynamic "expiration" {
         for_each = try(flatten([rule.value.expiration]), [])
@@ -55,5 +72,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
         }
       }
     }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "main" {
+  bucket = aws_s3_bucket.main.id
+  expected_bucket_owner = var.expected_bucket_owner
+  versioning_configuration {
+    status = var.versioning_configuration_status
   }
 }

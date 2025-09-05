@@ -54,181 +54,181 @@ module "ecr" {
 #   name        = "env/wms/logiless"
 # }
 
-# ALB - プロデューササービス
-module "alb_producer" {
-  source = "../../modules/alb"
+# # ALB - プロデューササービス
+# module "alb_producer" {
+#   source = "../../modules/alb"
 
-  service_name = local.service_name
-  name         = "producer"
-  vpc_id       = module.network.vpc_id
-  subnet_ids   = module.network.public_subnets
-  egress_rules = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  ]
-  ingress_rules = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = -1
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  ]
+#   service_name = local.service_name
+#   name         = "producer"
+#   vpc_id       = module.network.vpc_id
+#   subnet_ids   = module.network.public_subnets
+#   egress_rules = [
+#     {
+#       from_port   = 0
+#       to_port     = 0
+#       protocol    = "-1"
+#       cidr_blocks = ["0.0.0.0/0"]
+#     }
+#   ]
+#   ingress_rules = [
+#     {
+#       from_port   = 0
+#       to_port     = 0
+#       protocol    = -1
+#       cidr_blocks = ["0.0.0.0/0"]
+#     }
+#   ]
 
-  listener_port     = 443
-  listener_protocol = "HTTPS"
+#   listener_port     = 443
+#   listener_protocol = "HTTPS"
 
-  target_group_port     = 8000
-  target_group_protocol = "HTTP"
+#   target_group_port     = 8000
+#   target_group_protocol = "HTTP"
 
-  health_check = {
-    enabled             = true
-    healthy_threshold   = 5
-    interval            = 30
-    matcher             = 200
-    path                = "/healthz"
-    port                = "traffic-port"
-    protocol            = "HTTP"
-    timeout             = 5
-    unhealthy_threshold = 2
-  }
+#   health_check = {
+#     enabled             = true
+#     healthy_threshold   = 5
+#     interval            = 30
+#     matcher             = 200
+#     path                = "/healthz"
+#     port                = "traffic-port"
+#     protocol            = "HTTP"
+#     timeout             = 5
+#     unhealthy_threshold = 2
+#   }
 
-  ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn = aws_acm_certificate.main.arn
-  zone_id         = data.aws_route53_zone.root.zone_id
-  domain_name     = data.aws_route53_zone.root.name
+#   ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+#   certificate_arn = aws_acm_certificate.main.arn
+#   zone_id         = data.aws_route53_zone.root.zone_id
+#   domain_name     = data.aws_route53_zone.root.name
 
-  enable_deletion_protection = false
-}
+#   enable_deletion_protection = false
+# }
 
-# Service Discovery 名前空間
-resource "aws_service_discovery_private_dns_namespace" "internal" {
-  name        = "butterthon-dev.internal"
-  description = "Service discovery for internal API"
-  vpc         = module.network.vpc_id
-}
+# # Service Discovery 名前空間
+# resource "aws_service_discovery_private_dns_namespace" "internal" {
+#   name        = "butterthon-dev.internal"
+#   description = "Service discovery for internal API"
+#   vpc         = module.network.vpc_id
+# }
 
-# ECSクラスタ
-module "ecs_cluster" {
-  source = "../../modules/ecs-cluster"
-  name   = "ecs-${local.service_name}"
+# # ECSクラスタ
+# module "ecs_cluster" {
+#   source = "../../modules/ecs-cluster"
+#   name   = "ecs-${local.service_name}"
 
-  # settings = [
-  #   {
-  #     name  = "containerInsights"
-  #     value = "enabled"
-  #   }
-  # ]
+#   # settings = [
+#   #   {
+#   #     name  = "containerInsights"
+#   #     value = "enabled"
+#   #   }
+#   # ]
 
-  configuration = {
-    execute_command_configuration = {
-      # logging = "NONE"
-      logging = "DEFAULT"
-      # log_configuration = {
-      #   cloud_watch_encryption_enabled = true
-      #   cloud_watch_log_group_name     = "ecs-${local.service_name}"
-      # }
-    }
-  }
+#   configuration = {
+#     execute_command_configuration = {
+#       # logging = "NONE"
+#       logging = "DEFAULT"
+#       # log_configuration = {
+#       #   cloud_watch_encryption_enabled = true
+#       #   cloud_watch_log_group_name     = "ecs-${local.service_name}"
+#       # }
+#     }
+#   }
 
-  service_connect_defaults = {
-    namespace = aws_service_discovery_http_namespace.main.arn
-  }
+#   service_connect_defaults = {
+#     namespace = aws_service_discovery_http_namespace.main.arn
+#   }
 
-  default_capacity_provider_strategy = {
-    base              = 1
-    weight            = 100
-    capacity_provider = "FARGATE_SPOT"
-  }
-}
+#   default_capacity_provider_strategy = {
+#     base              = 1
+#     weight            = 100
+#     capacity_provider = "FARGATE_SPOT"
+#   }
+# }
 
-# ECSサービス
-module "ecs_service_producer" {
-  source = "../../modules/ecs-service/fargate"
+# # ECSサービス
+# module "ecs_service_producer" {
+#   source = "../../modules/ecs-service/fargate"
 
-  service_name = local.service_name
+#   service_name = local.service_name
 
-  egress_rules = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  ]
+#   egress_rules = [
+#     {
+#       from_port   = 0
+#       to_port     = 0
+#       protocol    = "-1"
+#       cidr_blocks = ["0.0.0.0/0"]
+#     }
+#   ]
 
-  ingress_rules = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = ["0.0.0.0/0"]
-    }
-  ]
+#   ingress_rules = [
+#     {
+#       from_port   = 0
+#       to_port     = 0
+#       protocol    = "-1"
+#       cidr_blocks = ["0.0.0.0/0"]
+#     }
+#   ]
 
-  # タスクロール
-  create_task_role = true
-  task_role_policy = {
-    Version = "2012-10-17"
-    Statement = [
-      # SSMセッションマネージャ
-      {
-        Effect = "Allow"
-        Action = [
-          "ssmmessages:CreateControlChannel",
-          "ssmmessages:CreateDataChannel",
-          "ssmmessages:OpenControlChannel",
-          "ssmmessages:OpenDataChannel"
-        ]
-        Resource = ["arn:aws:ssmmessages:ap-northeast-1:184321346292:*"]
-      },
-    ]
-  }
+#   # タスクロール
+#   create_task_role = true
+#   task_role_policy = {
+#     Version = "2012-10-17"
+#     Statement = [
+#       # SSMセッションマネージャ
+#       {
+#         Effect = "Allow"
+#         Action = [
+#           "ssmmessages:CreateControlChannel",
+#           "ssmmessages:CreateDataChannel",
+#           "ssmmessages:OpenControlChannel",
+#           "ssmmessages:OpenDataChannel"
+#         ]
+#         Resource = ["arn:aws:ssmmessages:ap-northeast-1:184321346292:*"]
+#       },
+#     ]
+#   }
 
-  # ECSタスク定義
-  task_cpu    = 256
-  task_memory = 512
-  container_definitions = [
-    {
-      name                   = "api"
-      image                  = "184321346292.dkr.ecr.ap-northeast-1.amazonaws.com/viz-butterthon-dev-ecr-producer:latest"
-      essential              = true
-      readonlyRootFilesystem = false
-      portMappings = [
-        {
-          name          = "api"
-          containerPort = 8000
-          protocol      = "tcp"
-        }
-      ]
-    }
-  ]
+#   # ECSタスク定義
+#   task_cpu    = 256
+#   task_memory = 512
+#   container_definitions = [
+#     {
+#       name                   = "api"
+#       image                  = "184321346292.dkr.ecr.ap-northeast-1.amazonaws.com/viz-butterthon-dev-ecr-producer:latest"
+#       essential              = true
+#       readonlyRootFilesystem = false
+#       portMappings = [
+#         {
+#           name          = "api"
+#           containerPort = 8000
+#           protocol      = "tcp"
+#         }
+#       ]
+#     }
+#   ]
 
-  # ECSサービス
-  vpc_id                         = module.network.vpc_id
-  ecs_cluster_id                 = module.ecs_cluster.cluster_id
-  ecs_cluster_name               = module.ecs_cluster.cluster_name
-  ecs_service_name               = "producer"
-  desired_count                  = 1
-  enabled_service_discovery      = true
-  service_discovery_name         = "producer"
-  service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.internal.id
-  enable_execute_command         = true
-  network_configuration = {
-    subnet_ids       = module.network.private_subnets
-    assign_public_ip = false
-  }
+#   # ECSサービス
+#   vpc_id                         = module.network.vpc_id
+#   ecs_cluster_id                 = module.ecs_cluster.cluster_id
+#   ecs_cluster_name               = module.ecs_cluster.cluster_name
+#   ecs_service_name               = "producer"
+#   desired_count                  = 1
+#   enabled_service_discovery      = true
+#   service_discovery_name         = "producer"
+#   service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.internal.id
+#   enable_execute_command         = true
+#   network_configuration = {
+#     subnet_ids       = module.network.private_subnets
+#     assign_public_ip = false
+#   }
 
-  load_balancer = {
-    container_name   = "api"
-    container_port   = 8000
-    target_group_arn = module.alb_producer.target_group_arn
-  }
-}
+#   load_balancer = {
+#     container_name   = "api"
+#     container_port   = 8000
+#     target_group_arn = module.alb_producer.target_group_arn
+#   }
+# }
 
 # module "ecs_service_poller" {
 #   source = "../../modules/ecs-service"
@@ -735,4 +735,70 @@ module "cognito" {
   cognito_custom_domain_certificate_arn = aws_acm_certificate.us_east_1.arn
   zone_id                               = data.aws_route53_zone.root.zone_id
   username_configuration_case_sensitive = false
+}
+
+
+########################################################
+# S3バージョニングの検証
+########################################################
+
+module "s3_lifecycle_example" {
+  source      = "../../modules/s3"
+  bucket_name = "s3-butterthon-dev-example"
+  versioning_configuration_status = "Enabled"
+  lifecycle_rule = [
+    {
+      id = "lifecycle-example"
+      enabled = true
+
+      # オブジェクトの非現在バージョンを完全に削除
+      # (この設定によって非現行バージョンが削除されると削除マーカーだけが残る)
+      noncurrent_version_expiration = {
+        newer_noncurrent_versions = 1  # 保持する非現行バージョンの数（世代数）
+        noncurrent_days           = 1  # 非現行バージョンの有効期限(日) TODO: 3世代残すならこの設定は不要
+      }
+
+      # 有効期限切れのオブジェクト削除マーカーを削除
+      # (削除マーカーだけが残ったオブジェクトを削除するための設定)
+      expiration = {
+        expired_object_delete_marker = true
+      }
+
+      # 不完全なマルチパートアップロード削除
+      abort_incomplete_multipart_upload = {
+        days_after_initiation = 1
+      }
+    }
+  ]
+}
+
+# 後からバージョニングを有効にした場合のライフサイクル検証
+module "s3_after_lifecycle_example" {
+  source      = "../../modules/s3"
+  bucket_name = "s3-butterthon-dev-example-after-lifecycle"
+  versioning_configuration_status = "Enabled"
+  lifecycle_rule = [
+    {
+      id = "lifecycle-example"
+      enabled = true
+
+      # オブジェクトの非現在バージョンを完全に削除
+      # (この設定によって非現行バージョンが削除されると削除マーカーだけが残る)
+      noncurrent_version_expiration = {
+        newer_noncurrent_versions = 1  # 保持する非現行バージョンの数（世代数）
+        noncurrent_days           = 1  # 非現行バージョンの有効期限(日) TODO: 3世代残すならこの設定は不要
+      }
+
+      # 有効期限切れのオブジェクト削除マーカーを削除
+      # (削除マーカーだけが残ったオブジェクトを削除するための設定)
+      expiration = {
+        expired_object_delete_marker = true
+      }
+
+      # 不完全なマルチパートアップロード削除
+      abort_incomplete_multipart_upload = {
+        days_after_initiation = 1
+      }
+    },
+  ]
 }
