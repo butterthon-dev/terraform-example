@@ -1,0 +1,12 @@
+name: repository-dispatch-test
+on:
+  repository_dispatch:
+     types: [on-demand-test]
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: echo
+        run: echo ${{ github.event.force }}
